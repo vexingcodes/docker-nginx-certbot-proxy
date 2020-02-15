@@ -1,0 +1,17 @@
+version: '3'
+services:
+  nginx:
+    image: nginx
+  nginx-certbot-proxy:
+    build: ../
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./custom.conf:/etc/nginx/custom.conf:ro
+      - certificate:/etc/letsencrypt:rw
+    environment:
+      - SERVER_NAME=${SERVER_NAME:?You must set the SERVER_NAME environment variable!}
+      - CERTBOT_EMAIL=${CERTBOT_EMAIL:?You must set the CERTBOT_EMAIL environment variable!}
+volumes:
+  certificate:

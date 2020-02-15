@@ -1,0 +1,27 @@
+#!/bin/bash -ux
+
+# Attempt to get an initial certificate if we do not already have one.
+CERTIFICATE="/etc/letsencrypt/live/${SERVER_NAME}/privkey.pem"
+until [ -e "${CERTIFICATE}" ]; do
+  certbot certonly \
+    --agree-tos \
+    --domain "${SERVER_NAME}" \
+    --email "${CERTBOT_EMAIL}" \
+    --non-interactive \
+    --rsa-key-size 4096 \
+    --webroot \
+    --webroot-path /var/www/html
+  [[ $? -ne 0 ]] && echo "Could not get certificate! Sleeping 1 minute..." && sleep 1m
+done
+
+# We have a certificate now. Tell nginx to load it.
+mv /etc/nginx/conf.d/https.conf.disabled /etc/nginx/conf.d/https.conf && nginx -s reload
+
+# Try to renew the certificate every day. Whenever it actually gets renewed, tell nginx to reload the certificate.
+while :; do
+  CERTIFICATE_TIME_BEFORE=$(stat -c %Y ${CERTIFICATE})
+  certbot renew
+  CERTIFICATE_TIME_AFTER=$(stat -c %Y ${CERTIFICATE})
+  [[ "${CERTIFICATE_TIME_BEFORE}" != "${CERTIFICATE_TIME_AFTER}" ]] && nginx -s reload
+  sleep 1d
+done
